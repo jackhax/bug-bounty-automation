@@ -1,0 +1,3 @@
+[submodule "subscraper"]
+	path = subscraper
+	url = https://github.com/m8sec/subscraper.git
