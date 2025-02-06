@@ -1,24 +1,29 @@
 #!/usr/bin/env bash
 
-# Usage: ./enum.sh domain.com out_of_scope.txt [-o output_file]
+# Usage: ./enum.sh domain.com [out_of_scope.txt] [-o output_file]
 
 # Check if required arguments are provided
-if [[ $# -lt 2 ]]; then
-    echo "Usage: $0 <domain> <out_of_scope_file> [-o output_file]"
+if [[ $# -lt 1 ]]; then
+    echo "Usage: $0 <domain> [out_of_scope_file] [-o output_file]"
     exit 1
 fi
 
 TARGET=$1
-OUT_OF_SCOPE=$2
+OUT_OF_SCOPE=""
 OUTPUT_FILE=""
 
-# Parse optional -o flag for output file
-if [[ $# -eq 4 && $3 == "-o" ]]; then
+# Parse optional arguments
+if [[ $# -ge 2 && $2 != "-o" ]]; then
+    OUT_OF_SCOPE=$2
+fi
+
+if [[ $# -ge 4 && $3 == "-o" ]]; then
     OUTPUT_FILE=$4
 else
     OUTPUT_FILE="output/${TARGET}"
 fi
 
+# Convert output path to absolute path
 OUTPUT_FILE="$(realpath "$OUTPUT_FILE")"
 
 # Run subscraper to gather subdomains
@@ -30,10 +35,18 @@ if [[ ! -s "${TARGET}_subdomains.txt" ]]; then
     exit 1
 fi
 
-# Filter out out-of-scope subdomains and probe live hosts
-cat "${TARGET}_subdomains.txt" | grep -v "$(cat "$OUT_OF_SCOPE")" | httprobe > "$OUTPUT_FILE"
+# Create output directory if it doesn't exist
+mkdir -p "$(dirname "$OUTPUT_FILE")"
+
+# Filter out out-of-scope subdomains (if provided) and probe live hosts
+if [[ -n "$OUT_OF_SCOPE" && -f "$OUT_OF_SCOPE" ]]; then
+    cat "${TARGET}_subdomains.txt" | grep -v "$(cat "$OUT_OF_SCOPE")" | httprobe > "$OUTPUT_FILE"
+else
+    cat "${TARGET}_subdomains.txt" | httprobe > "$OUTPUT_FILE"
+fi
 
 # Clean up temporary file
 rm "${TARGET}_subdomains.txt"
 
+# Print the full path of the results
 echo "Results saved to: $OUTPUT_FILE"
